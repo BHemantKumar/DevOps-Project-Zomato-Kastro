@@ -61,10 +61,19 @@ pipeline {
             steps {
                 dependencyCheck(
                     odcInstallation: 'DP-Check',
-                    additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit -n'
+                    nvdCredentialsId: 'nvd-api-key',
+                    additionalArguments: '''
+                        --scan . \
+                        --format HTML \
+                        --format XML \
+                        --disableYarnAudit \
+                        --disableNodeAudit
+                    '''
                 )
 
-                dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+                dependencyCheckPublisher(
+                    pattern: '**/dependency-check-report.xml'
+                )
             }
         }
 
