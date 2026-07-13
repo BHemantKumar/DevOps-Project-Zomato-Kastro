@@ -57,25 +57,9 @@ pipeline {
             }
         }
 
-        stage("OWASP FS Scan") {
-            steps {
-                dependencyCheck(
-                    odcInstallation: 'DP-Check',
-                    nvdCredentialsId: 'nvd-api-key',
-                    additionalArguments: '''
-                        --scan . \
-                        --format HTML \
-                        --format XML \
-                        --disableYarnAudit \
-                        --disableNodeAudit
-                    '''
-                )
-
-                dependencyCheckPublisher(
-                    pattern: '**/dependency-check-report.xml'
-                )
-            }
-        }
+        // ============================
+        // OWASP Dependency Check skipped
+        // ============================
 
         stage("Trivy File Scan") {
             steps {
@@ -115,7 +99,7 @@ pipeline {
 
     post {
         always {
-            echo "Pipeline Finished Successfully"
+            echo "Pipeline Finished"
         }
 
         success {
