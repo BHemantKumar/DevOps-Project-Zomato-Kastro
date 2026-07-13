@@ -34,8 +34,6 @@ pipeline {
                         echo "======================================"
 
                         $SCANNER_HOME/bin/sonar-scanner \
-                        -Dsonar.host.url=$SONAR_HOST_URL \
-                        -Dsonar.login=$SONAR_AUTH_TOKEN \
                         -Dsonar.projectKey=zomato \
                         -Dsonar.projectName=zomato
                     '''
@@ -45,9 +43,7 @@ pipeline {
 
         stage("Code Quality Gate") {
             steps {
-                script {
-                    waitForQualityGate abortPipeline: false, credentialsId: 'sonar-token'
-                }
+                waitForQualityGate abortPipeline: false, credentialsId: 'sonar-token'
             }
         }
 
@@ -91,11 +87,9 @@ pipeline {
 
         stage("Tag & Push Docker Image") {
             steps {
-                script {
-                    withDockerRegistry(credentialsId: 'docker') {
-                        sh 'docker tag zomato hemantdevops2/zomato:latest'
-                        sh 'docker push hemantdevops2/zomato:latest'
-                    }
+                withDockerRegistry(credentialsId: 'docker') {
+                    sh 'docker tag zomato hemantdevops2/zomato:latest'
+                    sh 'docker push hemantdevops2/zomato:latest'
                 }
             }
         }
@@ -112,15 +106,23 @@ pipeline {
 
     post {
         always {
-            echo "Pipeline Finished Successfully"
-        }
-
-        success {
-            echo "Deployment Successful"
-        }
-
-        failure {
-            echo "Pipeline Failed"
+            emailext(
+                attachLog: true,
+                subject: "${currentBuild.currentResult}: ${env.JOB_NAME}",
+                body: """
+                <html>
+                <body>
+                <h2>Build Status: ${currentBuild.currentResult}</h2>
+                <p>Project: ${env.JOB_NAME}</p>
+                <p>Build Number: ${env.BUILD_NUMBER}</p>
+                <p>Build URL: ${env.BUILD_URL}</p>
+                </body>
+                </html>
+                """,
+                to: "baichittihemantkumar@gmail.com",
+                mimeType: "text/html",
+                attachmentsPattern: "trivy.txt"
+            )
         }
     }
 }
