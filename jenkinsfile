@@ -28,9 +28,18 @@ pipeline {
             steps {
                 withSonarQubeEnv('SonarQube') {
                     sh '''
-                    $SCANNER_HOME/bin/sonar-scanner \
-                    -Dsonar.projectName=zomato \
-                    -Dsonar.projectKey=zomato
+                        echo "======================================"
+                        echo "SCANNER_HOME=$SCANNER_HOME"
+                        echo "SONAR_HOST_URL=$SONAR_HOST_URL"
+                        echo "SONAR_AUTH_TOKEN=$SONAR_AUTH_TOKEN"
+                        echo "======================================"
+
+                        $SCANNER_HOME/bin/sonar-scanner \
+                        -X \
+                        -Dsonar.host.url=$SONAR_HOST_URL \
+                        -Dsonar.login=$SONAR_AUTH_TOKEN \
+                        -Dsonar.projectKey=zomato \
+                        -Dsonar.projectName=zomato
                     '''
                 }
             }
