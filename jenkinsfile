@@ -12,7 +12,7 @@ pipeline {
 
     stages {
 
-        stage("clean workspace") {
+        stage("Clean Workspace") {
             steps {
                 cleanWs()
             }
@@ -24,18 +24,16 @@ pipeline {
             }
         }
 
-        stage("Sonarqube Analysis") {
+        stage("SonarQube Analysis") {
             steps {
                 withSonarQubeEnv('SonarQube') {
                     sh '''
                         echo "======================================"
                         echo "SCANNER_HOME=$SCANNER_HOME"
                         echo "SONAR_HOST_URL=$SONAR_HOST_URL"
-                        echo "SONAR_AUTH_TOKEN=$SONAR_AUTH_TOKEN"
                         echo "======================================"
 
                         $SCANNER_HOME/bin/sonar-scanner \
-                        -X \
                         -Dsonar.host.url=$SONAR_HOST_URL \
                         -Dsonar.login=$SONAR_AUTH_TOKEN \
                         -Dsonar.projectKey=zomato \
@@ -55,81 +53,65 @@ pipeline {
 
         stage("Install NPM Dependencies") {
             steps {
-                sh "npm install"
+                sh 'npm install'
             }
         }
 
-        stage("OWASP FS SCAN") {
+        stage("OWASP FS Scan") {
             steps {
-                dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit -n', odcInstallation: 'DP-Check'
+                dependencyCheck(
+                    odcInstallation: 'DP-Check',
+                    additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit -n'
+                )
+
                 dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
             }
         }
 
         stage("Trivy File Scan") {
             steps {
-                sh "trivy fs . > trivy.txt"
+                sh 'trivy fs . > trivy.txt'
             }
         }
 
         stage("Build Docker Image") {
             steps {
-                sh "docker build -t zomato ."
+                sh 'docker build -t zomato .'
             }
         }
 
-        stage("Tag & Push to DockerHub") {
+        stage("Tag & Push Docker Image") {
             steps {
                 script {
                     withDockerRegistry(credentialsId: 'docker') {
-                        sh "docker tag zomato hemantdevops2/zomato:latest"
-                        sh "docker push hemantdevops2/zomato:latest"
+                        sh 'docker tag zomato hemantdevops2/zomato:latest'
+                        sh 'docker push hemantdevops2/zomato:latest'
                     }
                 }
             }
         }
 
-        stage("Docker Scout Image") {
+        stage("Deploy Container") {
             steps {
-                script {
-                    withDockerRegistry(credentialsId: 'docker') {
-                        sh "/usr/local/lib/docker/cli-plugins/docker-scout quickview hemantdevops2/zomato:latest"
-                        sh "/usr/local/lib/docker/cli-plugins/docker-scout cves hemantdevops2/zomato:latest"
-                        sh "/usr/local/lib/docker/cli-plugins/docker-scout recommendations hemantdevops2/zomato:latest"
-                    }
-                }
-            }
-        }
-
-        stage("Deploy to Container") {
-            steps {
-                sh """
-                docker rm -f zomato || true
-                docker run -d --name zomato -p 3000:3000 hemantdevops2/zomato:latest
-                """
+                sh '''
+                    docker rm -f zomato || true
+                    docker run -d --name zomato -p 3000:3000 hemantdevops2/zomato:latest
+                '''
             }
         }
     }
 
     post {
         always {
-            emailext(
-                attachLog: true,
-                subject: "${currentBuild.result}",
-                body: """
-                <html>
-                <body>
-                <h2>Build Status : ${currentBuild.result}</h2>
-                <p>Project : ${env.JOB_NAME}</p>
-                <p>Build Number : ${env.BUILD_NUMBER}</p>
-                <p>URL : ${env.BUILD_URL}</p>
-                </body>
-                </html>
-                """,
-                to: "baichittihemantkumar@gmail.com",
-                mimeType: "text/html",
-                attachmentsPattern: "trivy.txt"
-            )
+            echo "Pipeline Finished Successfully"
+        }
+
+        success {
+            echo "Deployment Successful"
+        }
+
+        failure {
+            echo "Pipeline Failed"
         }
     }
 }
